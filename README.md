@@ -1,4 +1,4 @@
 pipe2pidgin
 ===========
 
-Pipe something to Pidgin.
+cat "Testmessage" | ./main.py 'yourcontact@foo.com'
