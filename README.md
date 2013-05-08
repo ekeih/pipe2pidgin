@@ -1,4 +1,4 @@
 pipe2pidgin
 ===========
 
-cat "Testmessage" | ./main.py 'yourcontact@foo.com'
+Usage example: echo 'Hello World' | ./pipe2pidgin.py 'yourpidgincontact@example.com'
