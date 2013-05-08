@@ -3,8 +3,11 @@
 import dbus
 import sys
 
-contact = sys.argv[1]
+if len(sys.argv) != 2:
+    print  "Usage example: echo 'Hello World' | ./pipe2pidgin.py '<yourpidgincontact@example.com'"
+    sys.exit(-1)
 
+contact = sys.argv[1]
 PURPLE_CONV_TYPE_IM = 1
 
 message = sys.stdin.read()
