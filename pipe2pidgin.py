@@ -24,7 +24,9 @@ import dbus
 import sys
 
 if len(sys.argv) != 2:
-    print("Usage example: echo 'Hello World' | ./pipe2pidgin.py 'yourpidgincontact@example.com'")
+    print("Usage example:")
+    print(" echo 'Hello World' | ./pipe2pidgin.py 'yourpidgincontact@example.com'")
+    print(" ./pipe2pidgin.py filename 'yourpidgincontact@example.com'")
     sys.exit(-1)
 
 contact = sys.argv[1]
