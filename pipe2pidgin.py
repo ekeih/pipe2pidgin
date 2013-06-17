@@ -38,9 +38,9 @@ def findBuddy(contact):
                     ( purple.PurpleBuddyGetAlias(buddy) == contact or
                         purple.PurpleBuddyGetName(buddy) == contact )
                     ):
-                return purple.PurpleBuddyGetName(buddy)
+                return (purple.PurpleBuddyGetName(buddy), account)
 
-    return None
+    return (None, None)
 
 def completer(text, state):
     options = [buddy[0] for buddy in buddies if buddy[0].startswith(text)]
@@ -50,7 +50,8 @@ def completer(text, state):
         return None
 
 def getOnlineBuddies():
-    return [(purple.PurpleBuddyGetAlias(buddy), purple.PurpleBuddyGetName(buddy))
+    return [(purple.PurpleBuddyGetAlias(buddy), 
+        purple.PurpleBuddyGetName(buddy), account)
         for account in purple.PurpleAccountsGetAllActive()
         for buddy in purple.PurpleFindBuddies(account, '')
         if purple.PurpleBuddyIsOnline(buddy)]
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     contact = None
 
     parser = argparse.ArgumentParser(description='Pipe something or send file to pidgin recipients.')
-    parser.add_argument('-u', '--user', nargs = 1, help = 'Send to specific Alias/IM ID.', )
+    parser.add_argument('-u', '--user', help = 'Send to specific Alias/IM ID.', )
     parser.add_argument('file', nargs = '?', help = 'Specify file to send, else read from stdin.')
     args = parser.parse_args()
 
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
 
     if args.user is not None:
-        contact = findBuddy(args.user)
+        contact, account = findBuddy(args.user)
 
     if contact is None:
         print("Select user with <tab>")
@@ -90,7 +91,8 @@ if __name__ == "__main__":
         while 1:
             try:
                 line = raw_input(">> ")
-                contact = [buddy[1] for buddy in buddies if buddy[0] == line][0]
+                contact, account = [(buddy[1], buddy[2]) 
+                        for buddy in buddies if buddy[0] == line][0]
                 if contact is not None:
                     break
             except EOFError:
@@ -105,4 +107,3 @@ if __name__ == "__main__":
     else:
         conversation = purple.PurpleConversationNew(PURPLE_CONV_TYPE_IM, account, contact)
         purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
-
