@@ -22,17 +22,24 @@
 
 import dbus
 import sys
+import os.path
 
-if len(sys.argv) != 2:
+PURPLE_CONV_TYPE_IM = 1
+
+if len(sys.argv) == 1 :
     print("Usage example:")
     print(" echo 'Hello World' | ./pipe2pidgin.py 'yourpidgincontact@example.com'")
     print(" ./pipe2pidgin.py filename 'yourpidgincontact@example.com'")
     sys.exit(-1)
 
-contact = sys.argv[1]
-PURPLE_CONV_TYPE_IM = 1
+filepath = None
+if os.path.exists(sys.argv[1]):
+    filepath = os.path.realpath(sys.argv[1])
+    contact = sys.argv[2]
+else:
+    contact = sys.argv[1]
+    message = sys.stdin.read()
 
-message = sys.stdin.read()
 
 bus = dbus.SessionBus()
 obj = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
@@ -43,5 +50,10 @@ accounts = purple.PurpleAccountsGetAllActive()
 for account in accounts:
     buddy = purple.PurpleFindBuddy(account, contact)
     if buddy != 0 and purple.PurpleBuddyIsOnline(buddy):
-        conversation = purple.PurpleConversationNew(PURPLE_CONV_TYPE_IM, account, contact)
-        purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
+        if filepath is None:
+            conversation = purple.PurpleConversationNew(PURPLE_CONV_TYPE_IM, account, contact)
+            purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
+        else:
+            connection = purple.PurpleAccountGetConnection(account)
+            purple.ServSendFile(connection, contact, os.path.realpath(filepath))
+            break
