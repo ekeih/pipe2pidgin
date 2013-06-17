@@ -33,7 +33,7 @@ if len(sys.argv) == 1 :
     sys.exit(-1)
 
 filepath = None
-if os.path.exists(sys.argv[1]):
+if len(sys.argv) == 3:
     filepath = os.path.realpath(sys.argv[1])
     contact = sys.argv[2]
 else:
@@ -48,12 +48,17 @@ purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
 accounts = purple.PurpleAccountsGetAllActive()
 
 for account in accounts:
-    buddy = purple.PurpleFindBuddy(account, contact)
-    if buddy != 0 and purple.PurpleBuddyIsOnline(buddy):
-        if filepath is None:
-            conversation = purple.PurpleConversationNew(PURPLE_CONV_TYPE_IM, account, contact)
-            purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
-        else:
-            connection = purple.PurpleAccountGetConnection(account)
-            purple.ServSendFile(connection, contact, os.path.realpath(filepath))
-            break
+    buddies = purple.PurpleFindBuddies(account, '')
+    for buddy in buddies:
+        if (buddy != 0 and purple.PurpleBuddyIsOnline(buddy) and 
+                ( purple.PurpleBuddyGetAlias(buddy) == contact or 
+                    purple.PurpleBuddyGetName(buddy) == contact )
+                ):
+            contact = purple.PurpleBuddyGetName(buddy)
+            if filepath is None:
+                conversation = purple.PurpleConversationNew(PURPLE_CONV_TYPE_IM, account, contact)
+                purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
+            else:
+                connection = purple.PurpleAccountGetConnection(account)
+                purple.ServSendFile(connection, contact, filepath)
+                break
