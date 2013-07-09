@@ -2,8 +2,9 @@
 
 #####################################################################################
 #
-#    Pipe something to Pidgin.
+#    Pipe something / send file to Pidgin.
 #    Copyright (C) 2013  Max Rosin  git@hackrid.de
+#    Copyright (C) 2013  Andrew Karpow  andy@karamel.overninethousand.de
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as published by
@@ -22,24 +23,87 @@
 
 import dbus
 import sys
+import os.path
+import readline 
+import argparse
 
-if len(sys.argv) != 2:
-    print("Usage example: echo 'Hello World' | ./pipe2pidgin.py 'yourpidgincontact@example.com'")
-    sys.exit(-1)
-
-contact = sys.argv[1]
 PURPLE_CONV_TYPE_IM = 1
 
-message = sys.stdin.read()
+def findBuddy(contact):
+    accounts = purple.PurpleAccountsGetAllActive()
+    for account in accounts:
+        buddies = purple.PurpleFindBuddies(account, '')
+        for buddy in buddies:
+            if (buddy != 0 and purple.PurpleBuddyIsOnline(buddy) and
+                    ( purple.PurpleBuddyGetAlias(buddy) == contact or
+                        purple.PurpleBuddyGetName(buddy) == contact )
+                    ):
+                return (purple.PurpleBuddyGetName(buddy), account)
 
-bus = dbus.SessionBus()
-obj = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
-purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
+    return (None, None)
 
-accounts = purple.PurpleAccountsGetAllActive()
+def completer(text, state):
+    options = [buddy[0] for buddy in buddies if buddy[0].startswith(text)]
+    try:
+        return options[state]
+    except IndexError:
+        return None
 
-for account in accounts:
-    buddy = purple.PurpleFindBuddy(account, contact)
-    if buddy != 0 and purple.PurpleBuddyIsOnline(buddy):
+def getOnlineBuddies():
+    return [(purple.PurpleBuddyGetAlias(buddy), 
+        purple.PurpleBuddyGetName(buddy), account)
+        for account in purple.PurpleAccountsGetAllActive()
+        for buddy in purple.PurpleFindBuddies(account, '')
+        if purple.PurpleBuddyIsOnline(buddy)]
+
+if __name__ == "__main__":
+    message = None
+    contact = None
+
+    parser = argparse.ArgumentParser(description='Pipe something or send file to pidgin recipients.')
+    parser.add_argument('-u', '--user', help = 'Send to specific Alias/IM ID.', )
+    parser.add_argument('file', nargs = '?', help = 'Specify file to send, else read from stdin.')
+    args = parser.parse_args()
+
+    if args.file is None:
+        message = sys.stdin.read()
+    else:
+        filepath = os.path.realpath(args.file)
+
+    bus = dbus.SessionBus()
+    obj = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
+    purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
+
+    if args.user is not None:
+        contact, account = findBuddy(args.user)
+
+    if contact is None:
+        print("Select user with <tab>")
+        buddies = getOnlineBuddies()
+        readline.set_completer_delims('')
+        readline.set_completer(completer)
+        readline.parse_and_bind("tab: complete")
+
+        # Reopen stdin if already used
+        if message is not None:
+            sys.stdin = open('/dev/tty')
+
+        while 1:
+            try:
+                line = raw_input(">> ")
+                contact, account = [(buddy[1], buddy[2]) 
+                        for buddy in buddies if buddy[0] == line][0]
+                if contact is not None:
+                    break
+            except EOFError:
+                line = 'EOF'
+            except IndexError:
+                print("User %s not found" % line)
+                continue
+
+    if message is None:
+        connection = purple.PurpleAccountGetConnection(account)
+        purple.ServSendFile(connection, contact, filepath)
+    else:
         conversation = purple.PurpleConversationNew(PURPLE_CONV_TYPE_IM, account, contact)
         purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
