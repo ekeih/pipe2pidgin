@@ -1,7 +1,7 @@
 pipe2pidgin
 ===========
 
-usage: pipe2pidgin.py [-h] [-u USER] [file]
+usage: pipe2pidgin [-h] [-u USER] [file]
 
 Pipe something or send file to pidgin recipients.
 
